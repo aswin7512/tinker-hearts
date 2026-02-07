@@ -207,8 +207,12 @@ export default function Page() {
             </Button>
           </form>
 
-          {/* Admin Link */}
-          <div className="mt-8 text-center">
+          {/* Navigation Links */}
+          <div className="mt-8 flex items-center justify-center gap-4 text-center flex-wrap">
+            <Link href="/love-calculator" className="text-sm text-muted-foreground hover:text-rose-500 transition-colors">
+              Love Calculator
+            </Link>
+            <span className="text-muted-foreground">|</span>
             <Link href="/admin" className="text-sm text-muted-foreground hover:text-rose-500 transition-colors">
               Admin Panel
             </Link>
