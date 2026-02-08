@@ -43,33 +43,28 @@ export default function LoveCalculatorPage() {
     return Math.abs(hash % 101)
   }
 
-  const handleCalculate = async (e: React.FormEvent) => {
+ const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name1.trim() || !name2.trim()) return
 
     setIsCalculating(true)
 
-    // Calculate immediately
     const percentage = generateLovePercentage(name1, name2)
     
-    // 1. Send to Supabase (Database)
     try {
       const supabase = createClient()
       await supabase.from("love_calculations").insert({
         name1: name1,
         name2: name2,
         percentage: percentage,
-        // The 'timestamp' column will be automatically set by the database
       })
     } catch (error) {
       console.error("Error saving to database:", error)
     }
 
-    // 2. Existing simulation and LocalStorage logic
     setTimeout(() => {
       setLovePercentage(percentage)
 
-      // Save to localStorage (Personal History)
       const newCalculation: LoveCalculation = {
         name1,
         name2,
