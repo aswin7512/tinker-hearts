@@ -37,7 +37,7 @@ export default function LoveCalculatorPage() {
       const { data, error } = await supabase
         .from("love_calculations")
         .select("*")
-        .order("created_at", { ascending: false })
+        .order("timestamp", { ascending: false })
 
       if (error) throw error
       setCalculations(data || [])
