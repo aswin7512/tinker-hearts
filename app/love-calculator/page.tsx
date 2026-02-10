@@ -31,23 +31,14 @@ export default function LoveCalculatorPage() {
     loadCalculations()
   }, [])
 
-  const loadCalculations = async () => {
+  const loadCalculations = () => {
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("love_calculations")
-        .select("*")
-        .order("timestamp", { ascending: false })
-
-      if (error) throw error
-      setCalculations(data || [])
-    } catch (err) {
-      console.error("Error loading calculations:", err)
-      // Fallback to localStorage if Supabase fails
       const saved = localStorage.getItem("loveCalculations")
       if (saved) {
         setCalculations(JSON.parse(saved))
       }
+    } catch (err) {
+      console.error("Error loading from localStorage:", err)
     } finally {
       setLoading(false)
     }
@@ -75,41 +66,27 @@ export default function LoveCalculatorPage() {
       const percentage = generateLovePercentage(name1, name2)
       setLovePercentage(percentage)
 
+      // Create the object immediately for the user
+      const newCalculation: LoveCalculation = {
+        name1,
+        name2,
+        percentage,
+        timestamp: new Date().toLocaleString(),
+      }
+
+      const updated = [newCalculation, ...calculations]
+      setCalculations(updated)
+      localStorage.setItem("loveCalculations", JSON.stringify(updated))
+
       try {
         const supabase = createClient()
-        const { data, error } = await supabase
-          .from("love_calculations")
-          .insert([
-            {
-              name1,
-              name2,
-              percentage,
-            },
-          ])
-          .select()
-
-        if (error) throw error
-
-        // Add to local state with response data
-        if (data && data.length > 0) {
-          const newCalculation = {
-            ...data[0],
-            timestamp: new Date(data[0].created_at).toLocaleString(),
-          }
-          setCalculations([newCalculation, ...calculations])
-        }
-      } catch (err) {
-        console.error("Error saving calculation:", err)
-        // Fallback: save locally if Supabase fails
-        const newCalculation: LoveCalculation = {
+        await supabase.from("love_calculations").insert({
           name1,
           name2,
           percentage,
-          timestamp: new Date().toLocaleString(),
-        }
-        const updated = [newCalculation, ...calculations]
-        setCalculations(updated)
-        localStorage.setItem("loveCalculations", JSON.stringify(updated))
+        })
+      } catch (err) {
+        console.error("Error sending to database:", err)
       }
 
       setIsCalculating(false)
@@ -360,7 +337,7 @@ export default function LoveCalculatorPage() {
 
         {/* Footer */}
         <div className="mt-16 text-center text-sm text-muted-foreground">
-          <p>Made with <span className="text-rose-500">❤️</span> by Aswin, Amal & Krishna Priya</p>
+          <p>Made with <span className="text-rose-500">❤️</span> at ippozhe enkilum penne kittateey</p>
         </div>
       </div>
     </div>
