@@ -31,14 +31,22 @@ export default function LoveCalculatorPage() {
     loadCalculations()
   }, [])
 
-  const loadCalculations = () => {
+  const loadCalculations = async () => {
     try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("love_calculations")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+      setCalculations(data || [])
+    } catch (err) {
+      // Fallback to localStorage if Supabase fails
       const saved = localStorage.getItem("loveCalculations")
       if (saved) {
         setCalculations(JSON.parse(saved))
       }
-    } catch (err) {
-      console.error("Error loading from localStorage:", err)
     } finally {
       setLoading(false)
     }
@@ -66,27 +74,40 @@ export default function LoveCalculatorPage() {
       const percentage = generateLovePercentage(name1, name2)
       setLovePercentage(percentage)
 
-      // Create the object immediately for the user
-      const newCalculation: LoveCalculation = {
-        name1,
-        name2,
-        percentage,
-        timestamp: new Date().toLocaleString(),
-      }
-
-      const updated = [newCalculation, ...calculations]
-      setCalculations(updated)
-      localStorage.setItem("loveCalculations", JSON.stringify(updated))
-
       try {
         const supabase = createClient()
-        await supabase.from("love_calculations").insert({
+        const { data, error } = await supabase
+          .from("love_calculations")
+          .insert([
+            {
+              name1,
+              name2,
+              percentage,
+            },
+          ])
+          .select()
+
+        if (error) throw error
+
+        // Add to local state with response data
+        if (data && data.length > 0) {
+          const newCalculation = {
+            ...data[0],
+            timestamp: new Date(data[0].created_at).toLocaleString(),
+          }
+          setCalculations([newCalculation, ...calculations])
+        }
+      } catch (err) {
+        // Fallback: save locally if Supabase fails
+        const newCalculation: LoveCalculation = {
           name1,
           name2,
           percentage,
-        })
-      } catch (err) {
-        console.error("Error sending to database:", err)
+          timestamp: new Date().toLocaleString(),
+        }
+        const updated = [newCalculation, ...calculations]
+        setCalculations(updated)
+        localStorage.setItem("loveCalculations", JSON.stringify(updated))
       }
 
       setIsCalculating(false)
@@ -297,47 +318,9 @@ export default function LoveCalculatorPage() {
           ))}
         </div>
 
-        {/* History - Full width below */}
-        <div className="w-full mt-12" id="history-section">
-          <div className="container max-w-4xl mx-auto px-4">
-            <div className="backdrop-blur-xl bg-background/80 rounded-3xl shadow-2xl border-2 border-rose-200/50 p-8">
-              <h2 className="text-3xl font-bold mb-8 text-rose-600 dark:text-rose-400 text-center">Recent Love Matches</h2>
-
-              {calculations.length === 0 ? (
-                <div className="text-center py-16 text-muted-foreground">
-                  <Heart className="w-16 h-16 mx-auto mb-6 opacity-40" />
-                  <p className="text-lg">Start calculating to see your love matches here...</p>
-                </div>
-              ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {calculations.slice(0, 10).map((calc, index) => (
-                    <div
-                      key={index}
-                      className="p-6 bg-gradient-to-br from-rose-50 to-purple-50 dark:from-rose-950 dark:to-purple-950 rounded-2xl border-2 border-rose-200/50 dark:border-rose-800/50 hover:border-rose-400 transition-all hover:shadow-lg"
-                    >
-                      <div className="space-y-3">
-                        <p className="font-bold text-lg text-rose-900 dark:text-rose-100">
-                          {calc.name1} <Heart className="w-4 h-4 text-rose-400 fill-rose-400 inline mx-1" /> {calc.name2}
-                        </p>
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-4xl font-bold bg-gradient-to-r from-rose-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
-                            {calc.percentage}%
-                          </p>
-                          <p className="text-sm text-rose-600 dark:text-rose-400 font-semibold">{getLoveMessage(calc.percentage)}</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{calc.timestamp || (calc.created_at ? new Date(calc.created_at).toLocaleString() : '')}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Footer */}
         <div className="mt-16 text-center text-sm text-muted-foreground">
-          <p>Made with <span className="text-rose-500">❤️</span> at ippozhe enkilum penne kittateey</p>
+          <p>Made with <span className="text-rose-500">❤️</span> byTinkerhub CEMP</p>
         </div>
       </div>
     </div>
