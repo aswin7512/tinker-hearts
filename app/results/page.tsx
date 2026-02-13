@@ -1,13 +1,13 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { Heart, Lock, ChevronDown } from "lucide-react"
+import { Heart, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -18,6 +18,7 @@ type MatchResult = {
   match_name: string
   match_class: string
   message?: string
+  status?: string
 }
 
 export default function ResultsPage() {
@@ -29,10 +30,16 @@ export default function ResultsPage() {
   const [showScroll, setShowScroll] = useState(true)
   const [revealed, setRevealed] = useState(false)
 
+  // Helper to remove spaces and convert to lowercase
+  const normalize = (str: string) => {
+    return str ? str.replace(/\s+/g, "").toLowerCase() : ""
+  }
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setRevealed(false)
+    setResult(null)
 
     if (!name.trim() || !class_.trim()) {
       setError("Please enter your name and class")
@@ -43,25 +50,36 @@ export default function ResultsPage() {
 
     try {
       const supabase = createClient()
+      
+      // 1. Fetch all records (Since dataset is small, this is efficient enough)
+      // This allows us to "clean" the database data in Javascript before comparing
       const { data, error: err } = await supabase
         .from("match_results")
         .select("*")
-        .eq("name", name.trim())
-        .eq("class", class_.trim())
-        .single()
 
-      if (err) {
-        if (err.code === "PGRST116") {
-          setError("No match found. You may not have been paired this Valentine's Day, but your love story is just beginning!")
-        } else {
-          throw err
-        }
-      } else {
-        setResult(data)
+      if (err) throw err
+
+      // 2. Normalize Inputs
+      const searchName = normalize(name)
+      const searchClass = normalize(class_)
+
+      // 3. Find Match (Compare normalized Input vs Normalized DB Data)
+      const match = data?.find((record: MatchResult) => {
+        const dbName = normalize(record.name)
+        const dbClass = normalize(record.class)
+        return dbName === searchName && dbClass === searchClass
+      })
+
+      if (match) {
+        setResult(match)
         // Trigger animation after a short delay
         setTimeout(() => setRevealed(true), 500)
+      } else {
+        // No match found
+        setError("No match found. You may not have been paired this Valentine's Day, but your love story is just beginning!")
       }
     } catch (err) {
+      console.error(err)
       setError("An error occurred. Please try again.")
     } finally {
       setSearching(false)
@@ -198,7 +216,7 @@ export default function ResultsPage() {
 
                       <div className="text-center space-y-3">
                         <div className="text-3xl font-bold text-rose-900 dark:text-rose-100">
-                          {name}
+                          {result.name}
                         </div>
                         <Heart className="w-10 h-10 mx-auto text-rose-500 fill-rose-500 animate-pulse" />
                         <div className="text-3xl font-bold text-purple-900 dark:text-purple-100">
@@ -208,7 +226,7 @@ export default function ResultsPage() {
 
                       {result.message && (
                         <div className="mt-6 p-4 bg-white/50 dark:bg-white/10 rounded-lg text-center italic text-muted-foreground">
-                          {result.message}
+                          "{result.message}"
                         </div>
                       )}
 
